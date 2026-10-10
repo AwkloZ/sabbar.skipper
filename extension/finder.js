@@ -9,7 +9,7 @@
 
   // ---------- Which links count ----------
 
-  const IGNORED_HOST = /(^|\.)(sabbar\.com|apple\.com|gstatic\.com|googleapis\.com|googletagmanager\.com|google-analytics\.com|googlesyndication\.com|doubleclick\.net|facebook\.com|facebook\.net|fb\.com|instagram\.com|twitter\.com|x\.com|t\.co|tiktok\.com|snapchat\.com|youtube\.com|youtu\.be|whatsapp\.com|wa\.me|t\.me|telegram\.me|sentry\.io|sentry-cdn\.com|hotjar\.com|clarity\.ms|w3\.org|schema\.org|onelink\.me|app\.link|branch\.io|page\.link|cloudfront\.net|amazonaws\.com|cloudflare\.com|jsdelivr\.net|unpkg\.com|intercom\.io|intercomcdn\.com|segment\.io|mixpanel\.com|amplitude\.com)$/i;
+  const IGNORED_HOST = /(^|\.)(sabbar\.com|sab\.bar|apple\.com|gstatic\.com|googleapis\.com|googletagmanager\.com|google-analytics\.com|googlesyndication\.com|doubleclick\.net|facebook\.com|facebook\.net|fb\.com|instagram\.com|twitter\.com|x\.com|t\.co|tiktok\.com|snapchat\.com|youtube\.com|youtu\.be|whatsapp\.com|wa\.me|t\.me|telegram\.me|sentry\.io|sentry-cdn\.com|hotjar\.com|clarity\.ms|w3\.org|schema\.org|onelink\.me|app\.link|branch\.io|page\.link|cloudfront\.net|amazonaws\.com|cloudflare\.com|jsdelivr\.net|unpkg\.com|intercom\.io|intercomcdn\.com|segment\.io|mixpanel\.com|amplitude\.com)$/i;
   const ASSET = /\.(png|jpe?g|gif|svg|webp|avif|ico|css|m?js|woff2?|ttf|otf|eot|mp4|webm|mp3|map)(\?|#|$)/i;
   const APPLY_WORDS = /apply|application|تقديم|تقدم|قدّم|قدم/i;
   const URL_KEY_WORDS = /external|redirect|career|original|source|job_?url|joburl|link|href/i;
@@ -60,6 +60,53 @@
       .replace(/\\+"/g, '"').replace(/\\+\//g, "/");
     for (const m of t.matchAll(PAIR)) add(m[2], m[1]);
     for (const m of t.matchAll(HREF)) add(m[1], "href");
+    readJobInfo(t);
+  }
+
+  // ---------- The job itself (for searching the original posting) ----------
+
+  const jobs = new Map(); // job id -> { title, company, city, aggregated }
+  const currentJobId = () => (location.pathname.match(/\bid-([0-9a-f-]{36})/i) || [])[1]?.toLowerCase();
+
+  // Sabbar's page data has the job as {"id":"<uuid>","partnerName":...,"jobPositionValue":...}.
+  // "source":"AGGREGATED" means Sabbar copied the job from another site.
+  function readJobInfo(t) {
+    for (const m of t.matchAll(/"id":"([0-9a-f-]{36})","partner/g)) {
+      const chunk = t.slice(m.index, m.index + 8000);
+      const close = chunk.indexOf("}");
+      const own = chunk.slice(0, close < 0 ? chunk.length : close).split('"similarJobs":[')[0];
+      const get = (k) => (own.match(new RegExp(`"${k}":"([^"]*)"`)) || [])[1] || "";
+      const title = get("jobPositionValue");
+      if (!title) continue;
+      const prev = jobs.get(m[1]);
+      jobs.set(m[1], {
+        title,
+        company: get("partnerName") || prev?.company || "",
+        city: get("cityValue") || prev?.city || "",
+        aggregated: /"source":"AGGREGATED"/.test(own) || !!prev?.aggregated,
+      });
+      if (m[1] === currentJobId()) scheduleRender();
+    }
+  }
+
+  function jobForSearch() {
+    const job = jobs.get(currentJobId());
+    if (job) return job;
+    // Fallback: page title, e.g. "Integration Engineer Graduate Job in Ericsson | Sabbar".
+    const t = document.title.split("|")[0].trim();
+    const m = t.match(/^(.+?) Job in (.+)$/i);
+    return t ? { title: m ? m[1] : t, company: m ? m[2] : "", city: "", aggregated: false } : null;
+  }
+
+  function searchLinks(job) {
+    const q = encodeURIComponent;
+    const what = `${job.title} ${job.company}`.trim();
+    const where = job.city ? `${job.city}, Saudi Arabia` : "Saudi Arabia";
+    return [
+      ["Google", `https://www.google.com/search?q=${q(`"${job.title}" ${job.company} ${job.city} apply`.replace(/\s+/g, " ").trim())}`],
+      ["LinkedIn", `https://www.linkedin.com/jobs/search/?keywords=${q(what)}&location=${q(where)}`],
+      ["Indeed", `https://sa.indeed.com/jobs?q=${q(what)}&l=${q(job.city || "")}`],
+    ];
   }
 
   const scannedScripts = new WeakSet();
@@ -172,8 +219,16 @@
         <div class="note">On a list page, open the job itself first.</div>
         ${strong.slice(0, 6).map((c) => linkRow(c, false)).join("")}`;
     } else {
-      body = `<div class="title">No direct apply link found</div>
-        <div class="note">Sabbar may only reveal it after you log in.</div>`;
+      const job = jobForSearch();
+      body = `<div class="title">Sabbar hides the apply link for this job</div>`;
+      if (job) {
+        body += `<div class="note">${job.aggregated
+            ? "Sabbar copied this job from another site, so the original posting is public. Find it:"
+            : "Look for the same job elsewhere:"}</div>
+          <div class="job">${esc(job.title)}${job.company ? ` · ${esc(job.company)}` : ""}${job.city ? ` · ${esc(job.city)}` : ""}</div>
+          <div class="search">${searchLinks(job).map(([name, href]) =>
+            `<a class="open" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${name} ↗</a>`).join("")}</div>`;
+      }
     }
     const others = all.filter((c) => c.score < STRONG);
     if (others.length) {
@@ -204,6 +259,8 @@
       border: 1px solid #e5e5e5; }
     .title { font-weight: 600; font-size: 14px; margin: 0 20px 6px 0; }
     .note { color: #666; font-size: 12px; margin-bottom: 6px; }
+    .job { font-size: 12px; margin-bottom: 8px; }
+    .search { display: flex; gap: 6px; flex-wrap: wrap; }
     .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
     .url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #444; }
     .open { flex: none; padding: 4px 10px; border-radius: 6px; background: #eef6f2; color: #0b7a53; text-decoration: none; font-weight: 600; }

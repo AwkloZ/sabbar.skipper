@@ -24,7 +24,9 @@ If you already installed an older version, click the ↻ reload icon on the exte
 | --- | --- |
 | **Direct apply link found** | Click **Open ↗**. This is where Sabbar would eventually have sent you. |
 | **N apply links on this page** | You're probably on a page that lists several jobs. Open the specific job first. |
-| **No direct apply link found** | Sabbar didn't include the link in the page. It may only send it after you log in. Check **Other outside links**, which shows every non-Sabbar link found. |
+| **Sabbar hides the apply link for this job** | Sabbar didn't put the link in the page (it only gives it out after you register in the app). The panel shows the job's title, company and city with **Google ↗ / LinkedIn ↗ / Indeed ↗** buttons that search for the original posting. |
+
+Many Sabbar jobs are marked `AGGREGATED` in Sabbar's own data, meaning Sabbar copied them from another site. For those the panel says so: the original posting is public, usually on the company's careers site or LinkedIn, and one of the search buttons will find it.
 
 The panel ignores Sabbar's own links, app store links, social media, images and analytics. Close it with ×.
 
@@ -38,4 +40,4 @@ That's Sabbar guessing your location from your internet connection. It's common 
 
 ## How it works (for the curious)
 
-`extension/finder.js` runs on sabbar.com before the site's own code. It reads the job data the page already receives: the embedded Next.js data, streamed page data, and API responses. In that data it looks for outside links stored under names like `applyUrl`, `externalUrl` or `redirect_url`, or pointing at known job sites (Workday, Greenhouse, Lever, Bayt, LinkedIn Jobs, Jadarat, Google Forms…). Background "prefetch" requests for *other* jobs are ignored, so the link you see belongs to the job you're on. Nothing is sent anywhere. Everything stays in your browser.
+`extension/finder.js` runs on sabbar.com before the site's own code. It reads the job data the page already receives: the embedded Next.js data, streamed page data, and API responses. In that data it reads the job's title, company, city and source, and looks for outside links stored under names like `applyUrl`, `externalUrl` or `redirect_url`, or pointing at known job sites (Workday, Greenhouse, Lever, Bayt, LinkedIn Jobs, Jadarat, Google Forms…). Background "prefetch" requests for *other* jobs are ignored, so the link you see belongs to the job you're on. Nothing is sent anywhere. Everything stays in your browser.

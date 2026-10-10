@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sabbar Skipper",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Skip Sabbar's app-only flow: shows the real company/job-board apply link on sabbar.com job pages, and can make sabbar.com treat your PC like a phone.",
   "permissions": [
     "declarativeNetRequest",
