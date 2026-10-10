@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>Sabbar Skipper</h1>
+  <label class="row">
+    <span>Pretend to be a phone</span>
+    <input type="checkbox" id="enabled">
+  </label>
+  <label class="row">
+    <span>Phone type</span>
+    <select id="device">
+      <option value="android">Android</option>
+      <option value="iphone">iPhone</option>
+    </select>
+  </label>
+  <button id="phoneWindow">Open Sabbar in a phone-sized window</button>
+  <p class="hint">Changes reload any open Sabbar tabs. If one phone type still shows "use the app", try the other.</p>
+  <script src="popup.js"></script>
+</body>
+</html>

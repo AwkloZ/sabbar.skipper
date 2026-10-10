@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Sabbar Skipper",
+  "version": "1.0.0",
+  "description": "Makes sabbar.com treat your desktop browser like a phone, so you can browse and apply to jobs from your PC.",
+  "permissions": ["declarativeNetRequest", "scripting", "storage", "activeTab"],
+  "host_permissions": ["*://*.sabbar.com/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Sabbar Skipper", "default_popup": "popup.html" }
+}
