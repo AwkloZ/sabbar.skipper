@@ -7,8 +7,14 @@
 <body>
   <h1>Sabbar Skipper</h1>
   <label class="row">
+    <span>Show direct apply links</span>
+    <input type="checkbox" id="finder">
+  </label>
+  <p class="hint">Finds the company / job-board link behind Sabbar's Apply button and shows it at the bottom-left of job pages.</p>
+  <hr>
+  <label class="row">
     <span>Pretend to be a phone</span>
-    <input type="checkbox" id="enabled">
+    <input type="checkbox" id="phoneMode">
   </label>
   <label class="row">
     <span>Phone type</span>
@@ -18,7 +24,7 @@
     </select>
   </label>
   <button id="phoneWindow">Open Sabbar in a phone-sized window</button>
-  <p class="hint">Changes reload any open Sabbar tabs. If one phone type still shows "use the app", try the other.</p>
+  <p class="hint">Changes reload any open Sabbar tabs.</p>
   <script src="popup.js"></script>
 </body>
 </html>

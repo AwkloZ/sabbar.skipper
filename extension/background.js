@@ -1,7 +1,9 @@
-// Keeps the header rewrite and the injected script in sync with the popup settings.
+// Registers the page scripts and header rewrite according to the popup settings.
 const MATCHES = ["*://*.sabbar.com/*"];
-const SCRIPT_ID = "sabbar-skipper-spoof";
+const FINDER_ID = "sabbar-skipper-finder";
+const PHONE_ID = "sabbar-skipper-phone";
 const RULE_ID = 1;
+const RESOURCE_TYPES = ["main_frame", "sub_frame", "xmlhttprequest", "script", "stylesheet", "image", "font", "media", "websocket", "ping", "other"];
 
 const HEADERS = {
   android: [
@@ -19,38 +21,36 @@ const HEADERS = {
 };
 
 async function getSettings() {
-  const { enabled = true, device = "android" } = await chrome.storage.local.get(["enabled", "device"]);
-  return { enabled, device: device in HEADERS ? device : "android" };
+  const { finder = true, phoneMode = false, device = "android" } =
+    await chrome.storage.local.get(["finder", "phoneMode", "device"]);
+  return { finder, phoneMode, device: device in HEADERS ? device : "android" };
 }
 
 async function apply() {
-  const { enabled, device } = await getSettings();
+  const { finder, phoneMode, device } = await getSettings();
 
   await chrome.declarativeNetRequest.updateDynamicRules({
     removeRuleIds: [RULE_ID],
-    addRules: enabled
+    addRules: phoneMode
       ? [{
           id: RULE_ID,
           priority: 1,
           action: { type: "modifyHeaders", requestHeaders: HEADERS[device] },
-          condition: { requestDomains: ["sabbar.com"] },
+          // Page loads (main_frame) are only matched when listed explicitly.
+          condition: { requestDomains: ["sabbar.com"], resourceTypes: RESOURCE_TYPES },
         }]
       : [],
   });
 
-  const registered = await chrome.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] });
-  if (registered.length) await chrome.scripting.unregisterContentScripts({ ids: [SCRIPT_ID] });
-  if (enabled) {
-    await chrome.scripting.registerContentScripts([{
-      id: SCRIPT_ID,
-      matches: MATCHES,
-      js: [`devices/${device}.js`, "spoof.js"],
-      runAt: "document_start",
-      world: "MAIN",
-      allFrames: true,
-      persistAcrossSessions: true,
-    }]);
-  }
+  const ids = [FINDER_ID, PHONE_ID];
+  const registered = await chrome.scripting.getRegisteredContentScripts({ ids });
+  if (registered.length) await chrome.scripting.unregisterContentScripts({ ids: registered.map((s) => s.id) });
+
+  const common = { matches: MATCHES, runAt: "document_start", world: "MAIN", persistAcrossSessions: true };
+  const scripts = [];
+  if (finder) scripts.push({ ...common, id: FINDER_ID, js: ["finder.js"] });
+  if (phoneMode) scripts.push({ ...common, id: PHONE_ID, js: [`devices/${device}.js`, "spoof.js"], allFrames: true });
+  if (scripts.length) await chrome.scripting.registerContentScripts(scripts);
 }
 
 chrome.runtime.onInstalled.addListener(apply);

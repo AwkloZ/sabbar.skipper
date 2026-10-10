@@ -1,9 +1,8 @@
-const enabledBox = document.getElementById("enabled");
-const deviceSelect = document.getElementById("device");
+const SETTINGS = { finder: true, phoneMode: false, device: "android" };
 const SABBAR = /^https?:\/\/([^/]+\.)?sabbar\.com(\/|:|$)/;
 
-async function reloadSabbarTabs() {
-  // Give the background worker a moment to swap the rules, then reload.
+function reloadSabbarTabs() {
+  // Give the background worker a moment to swap the scripts, then reload.
   setTimeout(async () => {
     const tabs = await chrome.tabs.query({ url: "*://*.sabbar.com/*" });
     for (const tab of tabs) chrome.tabs.reload(tab.id, { bypassCache: true });
@@ -11,20 +10,17 @@ async function reloadSabbarTabs() {
 }
 
 (async () => {
-  const { enabled = true, device = "android" } = await chrome.storage.local.get(["enabled", "device"]);
-  enabledBox.checked = enabled;
-  deviceSelect.value = device;
+  const stored = await chrome.storage.local.get(Object.keys(SETTINGS));
+  for (const [key, fallback] of Object.entries(SETTINGS)) {
+    const el = document.getElementById(key);
+    const value = stored[key] ?? fallback;
+    if (el.type === "checkbox") el.checked = value; else el.value = value;
+    el.addEventListener("change", async () => {
+      await chrome.storage.local.set({ [key]: el.type === "checkbox" ? el.checked : el.value });
+      reloadSabbarTabs();
+    });
+  }
 })();
-
-enabledBox.addEventListener("change", async () => {
-  await chrome.storage.local.set({ enabled: enabledBox.checked });
-  reloadSabbarTabs();
-});
-
-deviceSelect.addEventListener("change", async () => {
-  await chrome.storage.local.set({ device: deviceSelect.value });
-  reloadSabbarTabs();
-});
 
 // A real narrow window, for sites that also check the screen width.
 document.getElementById("phoneWindow").addEventListener("click", async () => {
